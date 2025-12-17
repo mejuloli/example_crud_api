@@ -1,7 +1,8 @@
 # example_crud_api
 A minimal docker ready django api that implements simple crud with long wait async tasks, connects with postgreSQL and Celery+Redis
 
-#Project structure
+# Project structure
+<pre><code>
 backend/
 ├── app/
 │ ├── __init__.py
@@ -25,19 +26,27 @@ backend/
 ├── requirements.txt
 ├── Dockerfile
 └── docker-compose.yml
-
-#To build the containers and setup the persistent data to the db
+</code></pre>
+  
+# To build the containers and setup the persistent data to the db
 backend/setup.sh
 
-#Change backend/docker-compose.yml to handle the proper TCP ports if necessary
+# Change backend/docker-compose.yml to handle the proper TCP ports if necessary
 #Change any .env to match your setup
 
-#The end points are created with the API
+# The end points are created with the API
+<pre><code>
 http://0.0.0.0:8001/admin/
 http://0.0.0.0:8001/api/docs/
+</code></pre>
 
 #The mock html can be used as reference
 frontend/public/static-mock.html
 
 #final frontend should look like this
 documentation/example.mp4
+
+
+https://github.com/user-attachments/assets/b39004bd-82d3-43ab-9934-f7585a548e71
+
+
