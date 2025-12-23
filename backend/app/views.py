@@ -1,101 +1,70 @@
-from rest_framework import status, viewsets
-from rest_framework.views import APIView
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
 from rest_framework.response import Response
+from rest_framework.views import APIView
+from rest_framework.filters import OrderingFilter
 from celery.result import AsyncResult
-
 from .models import Person
 from .serializers import PersonSerializer
-from .tasks import long_running_task
+from .tasks import long_running_task, calculate_demographics_task
 
 
 class PersonViewSet(viewsets.ModelViewSet):
-  """
-  CRUD API for Person with pagination.
-    Provides CRUD operations:
-    - POST   /api/persons/      -> 201 Created
-    - GET    /api/persons/      -> 200 OK
-    - GET    /api/persons/{id}/ -> 200 OK
-    - PATCH  /api/persons/{id}/ -> 200 OK
-    - DELETE /api/persons/{id}/ -> 204 No Content
-  """
-  queryset = Person.objects.all().order_by("-created_date")
-  serializer_class = PersonSerializer
+    serializer_class = PersonSerializer
+    
+    # enable ordering by specific fields
+    filter_backends = [OrderingFilter]
+    ordering_fields = ['person_name', 'age', 'created_date']
+    ordering = ['-created_date']
+
+    def get_queryset(self):
+        """
+        applies optional date range filtering.
+        """
+        queryset = Person.objects.all().order_by('-created_date')
+        
+        start = self.request.query_params.get('start_date')
+        end = self.request.query_params.get('end_date')
+
+        if start:
+            queryset = queryset.filter(created_date__gte=start)
+        if end:
+            queryset = queryset.filter(created_date__lte=end)
+            
+        return queryset
+
+    @action(detail=False, methods=['post'], url_path='calculate-stats')
+    def calculate_stats(self, request):
+        """
+        endpoint to trigger the background calculation task.
+        """
+        task = calculate_demographics_task.delay()
+        return Response(
+            {"task_id": task.id, "status": "STARTED"}, 
+            status=status.HTTP_202_ACCEPTED
+        )
 
 
 class LongTaskStartView(APIView):
-  """
-  Starts an async Celery task.
-
-  return Response(
-      {
-        "task_id": task.id,
-        "status": "accepted"
-      },
-      status=status.HTTP_202_ACCEPTED
-    )
-  """
-
-  def post(self, request):
-    task = long_running_task.delay()
-
-    return Response(
-      {
-        "task_id": task.id,
-        "status": "accepted"
-      },
-      status=status.HTTP_202_ACCEPTED
-    )
+    def post(self, request):
+        task = long_running_task.delay()
+        return Response(
+            {"task_id": task.id}, 
+            status=status.HTTP_202_ACCEPTED
+        )
 
 
 class LongTaskStatusView(APIView):
-  """
-  Polling endpoint for async task.
-
-  
-  property state
-
-    The tasks current state.
-
-    Possible values includes:
-
-        PENDING
-
-            The task is waiting for execution.
-
-        STARTED
-
-            The task has been started.
-
-        RETRY
-
-            The task is to be retried, possibly because of failure.
-
-        FAILURE
-
-            The task raised an exception, or has exceeded the retry limit. The result attribute then contains the exception raised by the task.
-
-        SUCCESS
-
-            The task executed successfully. The result attribute then contains the tasks return value.
-
-  return Response(
-      {
-        "task_id": task_id,
-        "state": result.state,
-        "result": result.result if result.successful() else None
-      },
-      status=status.HTTP_200_OK
-    )
-  """
-
-  def get(self, request, task_id):
-    result = AsyncResult(str(task_id))
-
-    return Response(
-      {
-        "task_id": str(task_id),
-        "state": result.state,
-        "result": result.result if result.successful() else None
-      },
-      status=status.HTTP_200_OK
-    )
+    def get(self, request, task_id):
+        """
+        checks the status of a celery task by id.
+        """
+        # fix: convert uuid object to string for celery lookup
+        task_id_str = str(task_id)
+        
+        task_result = AsyncResult(task_id_str)
+        return Response({
+            "task_id": task_id_str, 
+            "status": task_result.status, 
+            "result": task_result.result
+        })
