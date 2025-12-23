@@ -1,53 +1,147 @@
-# Project *example_crud_api*
-A minimal docker ready django api that implements simple crud with long wait async tasks, connects with postgreSQL and Celery+Redis
+Com certeza! Incluir o teste do **Django Admin** no README é a "cereja do bolo". Mostra que o sistema tem uma área de gestão administrativa pronta e funcional.
 
-# Project structure
-<pre><code>
-backend/
-├── app/
-│ ├── __init__.py
-│ ├── admin.py
-│ ├── apps.py
-│ ├── migrations/
-│ │ └── __init__.py
-│ ├── models.py
-│ ├── serializers.py
-│ ├── views.py
-│ ├── urls.py
-│ └── tests.py
-├── config/
-│ ├── __init__.py
-│ ├── asgi.py
-│ ├── settings.py
-│ ├── urls.py
-│ └── wsgi.py
-├── .env
-├── manage.py
-├── requirements.txt
-├── Dockerfile
-└── docker-compose.yml
-</code></pre>
-  
-# To build the containers and setup the persistent data to the db
+Além disso, como descobrimos que o seu Docker está rodando na porta **8001** (e não na 8000), eu já corrigi **todos os links** do README para baterem com a sua configuração real.
+
+Aqui está o **README.md Final e Completo** (substitua tudo o que estiver lá):
+
+```markdown
+# Person Management System
+
+A robust Fullstack CRUD application built with **Django**, **React**, and **Docker**. This project was developed as a technical challenge, featuring asynchronous tasks, data analysis, and a refined User Experience.
+
+![Project Status](https://img.shields.io/badge/status-complete-success)
+![Docker](https://img.shields.io/badge/docker-ready-blue)
+
+## 🚀 Tech Stack
+
+### Backend
+* **Language:** Python 3.12
+* **Framework:** Django & Django Rest Framework (DRF)
+* **Database:** PostgreSQL
+* **Async Tasks:** Celery + Redis
+* **Documentation:** Swagger / OpenAPI (drf-spectacular)
+
+### Frontend
+* **Library:** React.js
+* **Styling:** CSS Modules / Inline Styles (Custom Design)
+* **HTTP Client:** Axios
+* **Feedback:** React Hot Toast
+* **UX Features:** Skeleton Loading, Debounced Search, Input Validation.
+
+---
+
+## ✨ Key Features
+
+* **Complete CRUD:** Create, Read, Update, and Delete person records.
+* **Admin Panel:** Built-in Django Admin to manage data with filters and search.
+* **Advanced Filtering:** Filter by Date Range (Start/End) and Text Search.
+* **Asynchronous Stats:** Calculate "Mean Age" and "Standard Deviation" using Celery background tasks (without blocking the UI).
+* **Smart Validation:** Backend and Frontend validation (prevents invalid ages, checks required fields).
+* **Data Seeding:** Custom script to generate mock data with historical dates for testing filters.
+* **Dockerized:** Fully containerized environment (Web, DB, Redis, Worker).
+
+---
+
+## 🛠️ How to Run
+
+### Prerequisites
+* Docker & Docker Compose installed.
+
+### 1. Clone and Start
 ```bash
-backend/setup.sh
+# Clone the repository
+git clone <your-repo-url>
+cd example_crud_api
+
+# Build and start containers (Detached mode)
+docker compose up --build -d
+
 ```
 
-**Obs.:** Change backend/docker-compose.yml to handle the proper TCP ports if necessary. Change any .env to match your setup.
+### 2. Access the Application
 
-# The end points are created with the API
-<pre><code>
-http://0.0.0.0:8001/admin/
-http://0.0.0.0:8001/api/docs/
-</code></pre>
+* **Frontend:** [http://localhost:3000](https://www.google.com/search?q=http://localhost:3000)
+* **Backend API:** [http://localhost:8001](https://www.google.com/search?q=http://localhost:8001)
+* **API Documentation (Swagger):** [http://localhost:8001/api/schema/swagger-ui/](https://www.google.com/search?q=http://localhost:8001/api/schema/swagger-ui/)
 
-# The mock html can be used as reference
+---
+
+## 🔐 Admin Panel (Management)
+
+The project includes a configured Django Admin panel to manage records directly.
+
+### 1. Create a Superuser
+
+Run this command in your terminal to create your login credentials:
+
 ```bash
-frontend/public/static-mock.html
+docker compose exec web python3 manage.py createsuperuser
+
 ```
 
-# Final frontend should look like this
-documentation/example.mp4
+*(Follow the prompts to set a username and password)*
 
+### 2. Access the Panel
 
-https://github.com/user-attachments/assets/b39004bd-82d3-43ab-9934-f7585a548e71
+Go to: **[http://localhost:8001/admin](https://www.google.com/search?q=http://localhost:8001/admin)**
+
+> **Tip:** The Admin panel is customized to show filters by creation date, search by name, and display formatted hobbies.
+
+---
+
+## 🧪 Populating Database (Mock Data)
+
+The project includes a script to generate realistic mock data with **past dates** (to test the date filtering feature).
+
+Run the following command while the containers are running:
+
+```bash
+docker compose exec web python3 populate_db.py
+
+```
+
+> **Note:** This command connects to the running Django container and inserts 5 random records with varied creation dates (e.g., 2023, 2024).
+
+If you want to **clear the database** before populating:
+
+```bash
+docker compose exec web python3 manage.py flush --no-input
+
+```
+
+---
+
+## 📂 Project Structure
+
+```plaintext
+example_crud_api/
+├── backend/                # Django API
+│   ├── app/                # Main Application Logic (Models, Views, Tasks)
+│   ├── config/             # Project Settings
+│   ├── populate_db.py      # Data Seeding Script
+│   └── Dockerfile
+├── frontend/               # React App
+│   ├── src/
+│   │   ├── components/     # PersonList, PersonForm
+│   │   └── services/       # API configuration
+│   └── Dockerfile
+└── docker-compose.yml      # Orchestration
+
+```
+
+---
+
+## 📝 API Endpoints
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| `GET` | `/api/persons/` | List all persons (supports filtering & pagination) |
+| `POST` | `/api/persons/` | Create a new person |
+| `PUT` | `/api/persons/{id}/` | Update a person |
+| `DELETE` | `/api/persons/{id}/` | Delete a person |
+| `POST` | `/api/persons/calculate-stats/` | Trigger async Celery task for statistics |
+| `GET` | `/api/long-task/{task_id}/` | Check status of the async task |
+
+---
+
+Developed by **Julia (@mejuloli)**
