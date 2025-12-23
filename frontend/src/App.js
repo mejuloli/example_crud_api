@@ -44,7 +44,7 @@ function App() {
       <Toaster position="top-right" />
       
       <h1 style={{ textAlign: 'center', color: '#495057' }}>
-        Neosilos - Teste Fullstack
+        Person Management System
       </h1>
 
       {/* create section */}

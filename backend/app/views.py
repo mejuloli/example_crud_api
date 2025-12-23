@@ -2,7 +2,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.filters import OrderingFilter
+from rest_framework.filters import OrderingFilter, SearchFilter
 from celery.result import AsyncResult
 from .models import Person
 from .serializers import PersonSerializer
@@ -12,14 +12,19 @@ from .tasks import long_running_task, calculate_demographics_task
 class PersonViewSet(viewsets.ModelViewSet):
     serializer_class = PersonSerializer
     
-    # enable ordering by specific fields
-    filter_backends = [OrderingFilter]
+    # enable ordering AND search
+    filter_backends = [OrderingFilter, SearchFilter]
+    
+    # fields available for ?search= query param
+    search_fields = ['person_name', 'hobbies']
+    
     ordering_fields = ['person_name', 'age', 'created_date']
     ordering = ['-created_date']
 
     def get_queryset(self):
         """
         applies optional date range filtering.
+        search filtering is applied automatically by filter_backends.
         """
         queryset = Person.objects.all().order_by('-created_date')
         

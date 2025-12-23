@@ -1,0 +1,52 @@
+# general / os
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log
+
+# python / django
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# virtual environments
+env/
+venv/
+.venv/
+.env_back
+
+# local database
+db.sqlite3
+
+# env files and keys
+.env
+.env.local
+.env.*
+
+# static and media files
+/static/
+/media/
+staticfiles/
+
+# celery / redis
+celerybeat-schedule
+celerybeat.pid
+dump.rdb
+
+# node / react
+node_modules/
+build/
+dist/
+coverage/
+
+# npm / yarn logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# docker
+postgres_data/
+redis_data/

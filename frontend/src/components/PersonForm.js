@@ -3,20 +3,17 @@ import toast from 'react-hot-toast';
 import api from '../api';
 
 const PersonForm = ({ onSuccess, initialData, onCancel }) => {
+  // form state
   const [formData, setFormData] = useState({
     name: '',
     age: '',
     hobbies: '',
   });
   
-  // store initial values for dirty check
   const [initialValues, setInitialValues] = useState(null);
-  
-  // loading and error states
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
-  // load data
   useEffect(() => {
     if (initialData) {
       const data = {
@@ -34,7 +31,6 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
     setErrors({});
   }, [initialData]);
 
-  // check if form has changes
   const hasChanges = useMemo(() => {
     if (!initialValues) return true;
     return (
@@ -50,26 +46,31 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
   };
 
-  const handleSubmit = async () => {
+  const handleFormSubmit = async (e) => {
+    e.preventDefault(); 
+    
     const newErrors = {};
     const cleanHobbies = formData.hobbies.split(',').map(h => h.trim()).filter(Boolean);
     const ageNum = Number(formData.age);
 
-    // 1. Validate Name
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    // --- FRIENDLY VALIDATION MESSAGES ---
+    if (!formData.name.trim()) {
+      newErrors.name = 'Please enter a name.'; 
+    }
     
-    // 2. Validate Age (Logic Check)
     if (!formData.age) {
-      newErrors.age = 'Age is required';
+      newErrors.age = 'Age is missing.';
     } else if (ageNum < 0 || ageNum > 120) {
-      newErrors.age = 'Invalid age (0-120)';
+      newErrors.age = 'Let\'s keep it realistic (0-120).'; // Friendly tone
     }
 
-    // 3. Validate Hobbies
-    if (cleanHobbies.length === 0) newErrors.hobbies = 'At least 1 hobby required';
+    if (cleanHobbies.length === 0) {
+      newErrors.hobbies = 'Add at least one hobby (e.g. Reading).'; // Helpful hint
+    }
 
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      // Optional: shake effect or subtle toast could go here
       return;
     }
 
@@ -83,46 +84,43 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
 
       if (initialData) {
         await api.put(`/persons/${initialData.id}/`, payload);
-        toast.success('Person updated!');
+        toast.success('Successfully updated!');
       } else {
         await api.post('/persons/', payload);
-        toast.success('Person created!');
+        toast.success('New person added!');
         setFormData({ name: '', age: '', hobbies: '' });
       }
       onSuccess();
     } catch (error) {
-      toast.error('Error saving data.');
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // visual chips logic
   const hobbyChips = formData.hobbies
     ? formData.hobbies.split(',').map(h => h.trim()).filter(Boolean)
     : [];
 
   return (
-    <div style={{
-      background: '#fff',
-      padding: '15px',
-      borderRadius: '8px',
-      border: '1px solid #e5e7eb',
-      boxShadow: initialData ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
-    }}>
+    <form 
+      onSubmit={handleFormSubmit} 
+      style={{
+        background: '#fff',
+        padding: '15px',
+        borderRadius: '8px',
+        border: '1px solid #e5e7eb',
+        boxShadow: initialData ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
+      }}
+    >
       
-      {/* flex container */}
-      <div style={{ 
-        display: 'flex', 
-        flexWrap: 'wrap', 
-        gap: '12px',
-        alignItems: 'flex-start'
-      }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-start' }}>
         
-        {/* name column */}
+        {/* name input */}
         <div style={{ flex: '2 1 200px' }}>
           <input
             name="name"
+            autoFocus 
             value={formData.name}
             onChange={handleChange}
             placeholder="Name"
@@ -137,16 +135,19 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
               boxSizing: 'border-box'
             }}
           />
-          {errors.name && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '2px'}}>{errors.name}</div>}
+          {errors.name && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '4px', fontWeight: '500'}}>{errors.name}</div>}
         </div>
 
-        {/* age column */}
+        {/* age input */}
         <div style={{ flex: '0 1 80px' }}>
           <input
             name="age"
             type="number"
-            min="0"   // Trava setinha pra baixo
-            max="120" // Trava setinha pra cima
+            min="0"
+            max="120"
+            onKeyDown={(e) => {
+              if (['e', 'E', '+', '-', '.'].includes(e.key)) e.preventDefault();
+            }}
             value={formData.age}
             onChange={handleChange}
             placeholder="Age"
@@ -161,16 +162,16 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
               boxSizing: 'border-box'
             }}
           />
-           {errors.age && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '2px', whiteSpace: 'nowrap'}}>{errors.age}</div>}
+           {errors.age && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '4px', whiteSpace: 'nowrap', fontWeight: '500'}}>{errors.age}</div>}
         </div>
 
-        {/* hobbies column */}
+        {/* hobbies input */}
         <div style={{ flex: '3 1 250px' }}>
           <input
             name="hobbies"
             value={formData.hobbies}
             onChange={handleChange}
-            placeholder="Hobbies (comma separated)"
+            placeholder="Hobbies (e.g. Soccer, Games)"
             style={{
               width: '100%',
               height: '40px',
@@ -182,9 +183,8 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
               boxSizing: 'border-box'
             }}
           />
-          {errors.hobbies && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '2px'}}>{errors.hobbies}</div>}
+          {errors.hobbies && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '4px', fontWeight: '500'}}>{errors.hobbies}</div>}
           
-          {/* chips visual feedback */}
           <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap', minHeight: '20px' }}>
             {hobbyChips.map((chip, idx) => (
               <span key={idx} style={{
@@ -203,10 +203,10 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
           </div>
         </div>
 
-        {/* buttons column */}
+        {/* action buttons */}
         <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
           <button
-            onClick={handleSubmit}
+            type="submit"
             disabled={isSubmitting || !hasChanges}
             style={{
               height: '40px',
@@ -228,6 +228,7 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
           
           {onCancel && (
             <button
+              type="button"
               onClick={onCancel}
               disabled={isSubmitting}
               style={{
@@ -248,7 +249,7 @@ const PersonForm = ({ onSuccess, initialData, onCancel }) => {
           )}
         </div>
       </div>
-    </div>
+    </form>
   );
 };
 
