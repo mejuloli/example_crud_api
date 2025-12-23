@@ -1,149 +1,253 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import toast from 'react-hot-toast';
 import api from '../api';
 
 const PersonForm = ({ onSuccess, initialData, onCancel }) => {
   const [formData, setFormData] = useState({
-    person_name: '',
-    age: 18,
+    name: '',
+    age: '',
     hobbies: '',
   });
-  const [loading, setLoading] = useState(false);
+  
+  // store initial values for dirty check
+  const [initialValues, setInitialValues] = useState(null);
+  
+  // loading and error states
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState({});
 
-  // populate form when editing
+  // load data
   useEffect(() => {
     if (initialData) {
-      setFormData({
-        person_name: initialData.person_name,
-        age: initialData.age || 18,
-        hobbies: Array.isArray(initialData.hobbies)
-          ? initialData.hobbies.join(', ')
-          : '',
-      });
+      const data = {
+        name: initialData.person_name || '',
+        age: String(initialData.age || ''),
+        hobbies: initialData.hobbies ? initialData.hobbies.join(', ') : '',
+      };
+      setFormData(data);
+      setInitialValues(data);
     } else {
-      setFormData({ person_name: '', age: 18, hobbies: '' });
+      const empty = { name: '', age: '', hobbies: '' };
+      setFormData(empty);
+      setInitialValues(null);
     }
+    setErrors({});
   }, [initialData]);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    
-    // process hobbies string into array
-    const payload = {
-      ...formData,
-      hobbies: formData.hobbies
-        .split(',')
-        .map((h) => h.trim())
-        .filter((h) => h),
-    };
+  // check if form has changes
+  const hasChanges = useMemo(() => {
+    if (!initialValues) return true;
+    return (
+      formData.name !== initialValues.name ||
+      formData.age !== initialValues.age ||
+      formData.hobbies !== initialValues.hobbies
+    );
+  }, [formData, initialValues]);
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: null }));
+  };
+
+  const handleSubmit = async () => {
+    const newErrors = {};
+    const cleanHobbies = formData.hobbies.split(',').map(h => h.trim()).filter(Boolean);
+    const ageNum = Number(formData.age);
+
+    // 1. Validate Name
+    if (!formData.name.trim()) newErrors.name = 'Name is required';
+    
+    // 2. Validate Age (Logic Check)
+    if (!formData.age) {
+      newErrors.age = 'Age is required';
+    } else if (ageNum < 0 || ageNum > 120) {
+      newErrors.age = 'Invalid age (0-120)';
+    }
+
+    // 3. Validate Hobbies
+    if (cleanHobbies.length === 0) newErrors.hobbies = 'At least 1 hobby required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
+      const payload = {
+        person_name: formData.name,
+        age: ageNum,
+        hobbies: cleanHobbies,
+      };
+
       if (initialData) {
-        await api.patch(`/persons/${initialData.id}/`, payload);
+        await api.put(`/persons/${initialData.id}/`, payload);
+        toast.success('Person updated!');
       } else {
         await api.post('/persons/', payload);
+        toast.success('Person created!');
+        setFormData({ name: '', age: '', hobbies: '' });
       }
-      
       onSuccess();
-      
-      if (!initialData) {
-        setFormData({ person_name: '', age: 18, hobbies: '' });
-      }
-      toast.success('Saved successfully!');
-    } catch (err) {
+    } catch (error) {
       toast.error('Error saving data.');
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
+  // visual chips logic
+  const hobbyChips = formData.hobbies
+    ? formData.hobbies.split(',').map(h => h.trim()).filter(Boolean)
+    : [];
+
   return (
-    <div
-      style={{
-        background: '#fff',
-        padding: '20px',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-        marginBottom: '20px',
-      }}
-    >
-      <h3 style={{ marginTop: 0 }}>
-        {initialData ? 'Edit Person' : 'New Person'}
-      </h3>
+    <div style={{
+      background: '#fff',
+      padding: '15px',
+      borderRadius: '8px',
+      border: '1px solid #e5e7eb',
+      boxShadow: initialData ? 'none' : '0 1px 3px rgba(0,0,0,0.05)'
+    }}>
       
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          display: 'grid',
-          gap: '15px',
-          gridTemplateColumns: '2fr 1fr 3fr auto',
-        }}
-      >
-        <input
-          placeholder="Name"
-          value={formData.person_name}
-          onChange={(e) =>
-            setFormData({ ...formData, person_name: e.target.value })
-          }
-          required
-          style={{ padding: '8px', borderRadius: '4px' }}
-        />
+      {/* flex container */}
+      <div style={{ 
+        display: 'flex', 
+        flexWrap: 'wrap', 
+        gap: '12px',
+        alignItems: 'flex-start'
+      }}>
         
-        <input
-          type="number"
-          placeholder="Age"
-          value={formData.age}
-          onChange={(e) =>
-            setFormData({ ...formData, age: e.target.value })
-          }
-          required
-          style={{ padding: '8px', borderRadius: '4px' }}
-        />
-        
-        <input
-          placeholder="Hobbies (comma separated)"
-          value={formData.hobbies}
-          onChange={(e) =>
-            setFormData({ ...formData, hobbies: e.target.value })
-          }
-          style={{ padding: '8px', borderRadius: '4px' }}
-        />
-        
-        <div style={{ display: 'flex', gap: '5px' }}>
-          <button
-            type="submit"
-            disabled={loading}
+        {/* name column */}
+        <div style={{ flex: '2 1 200px' }}>
+          <input
+            name="name"
+            value={formData.name}
+            onChange={handleChange}
+            placeholder="Name"
             style={{
-              background: '#0d6efd',
-              color: '#fff',
+              width: '100%',
+              height: '40px',
+              padding: '0 10px',
+              borderRadius: '6px',
+              border: errors.name ? '1px solid #ef4444' : '1px solid #d1d5db',
+              outline: 'none',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+          {errors.name && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '2px'}}>{errors.name}</div>}
+        </div>
+
+        {/* age column */}
+        <div style={{ flex: '0 1 80px' }}>
+          <input
+            name="age"
+            type="number"
+            min="0"   // Trava setinha pra baixo
+            max="120" // Trava setinha pra cima
+            value={formData.age}
+            onChange={handleChange}
+            placeholder="Age"
+            style={{
+              width: '100%',
+              height: '40px',
+              padding: '0 10px',
+              borderRadius: '6px',
+              border: errors.age ? '1px solid #ef4444' : '1px solid #d1d5db',
+              outline: 'none',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+           {errors.age && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '2px', whiteSpace: 'nowrap'}}>{errors.age}</div>}
+        </div>
+
+        {/* hobbies column */}
+        <div style={{ flex: '3 1 250px' }}>
+          <input
+            name="hobbies"
+            value={formData.hobbies}
+            onChange={handleChange}
+            placeholder="Hobbies (comma separated)"
+            style={{
+              width: '100%',
+              height: '40px',
+              padding: '0 10px',
+              borderRadius: '6px',
+              border: errors.hobbies ? '1px solid #ef4444' : '1px solid #d1d5db',
+              outline: 'none',
+              fontSize: '14px',
+              boxSizing: 'border-box'
+            }}
+          />
+          {errors.hobbies && <div style={{color: '#ef4444', fontSize: '11px', marginTop: '2px'}}>{errors.hobbies}</div>}
+          
+          {/* chips visual feedback */}
+          <div style={{ display: 'flex', gap: '4px', marginTop: '6px', flexWrap: 'wrap', minHeight: '20px' }}>
+            {hobbyChips.map((chip, idx) => (
+              <span key={idx} style={{
+                background: '#eff6ff',
+                color: '#2563eb',
+                fontSize: '10px',
+                fontWeight: '600',
+                padding: '2px 8px',
+                borderRadius: '10px',
+                border: '1px solid #bfdbfe',
+                display: 'inline-block'
+              }}>
+                {chip}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* buttons column */}
+        <div style={{ display: 'flex', gap: '8px', flex: '0 0 auto' }}>
+          <button
+            onClick={handleSubmit}
+            disabled={isSubmitting || !hasChanges}
+            style={{
+              height: '40px',
+              background: (isSubmitting || !hasChanges) ? '#9ca3af' : '#2563eb',
+              color: 'white',
               border: 'none',
-              padding: '8px 15px',
-              borderRadius: '4px',
-              cursor: 'pointer',
+              padding: '0 20px',
+              borderRadius: '6px',
+              fontSize: '14px',
+              fontWeight: '600',
+              cursor: (isSubmitting || !hasChanges) ? 'not-allowed' : 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: (isSubmitting || !hasChanges) ? 'none' : '0 1px 2px rgba(0,0,0,0.1)',
+              transition: 'background 0.2s'
             }}
           >
-            {loading ? '...' : 'Save'}
+            {isSubmitting ? 'Saving...' : 'Save'}
           </button>
           
-          {initialData && (
+          {onCancel && (
             <button
-              type="button"
               onClick={onCancel}
+              disabled={isSubmitting}
               style={{
-                background: '#6c757d',
-                color: '#fff',
-                border: 'none',
-                padding: '8px',
-                borderRadius: '4px',
-                cursor: 'pointer',
+                height: '40px',
+                background: '#f3f4f6',
+                color: '#374151',
+                border: '1px solid #d1d5db',
+                padding: '0 16px',
+                borderRadius: '6px',
+                fontSize: '14px',
+                fontWeight: '500',
+                cursor: isSubmitting ? 'not-allowed' : 'pointer',
+                whiteSpace: 'nowrap'
               }}
             >
               Cancel
             </button>
           )}
         </div>
-      </form>
+      </div>
     </div>
   );
 };
